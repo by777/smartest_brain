@@ -1,5 +1,6 @@
 # smartest_brain
 头脑王者答题辅助，简明版
+![](https://raw.githubusercontent.com/by777/smartest_brain/master/demo.jpg)
 ## 使用事项
 + 请事先将adb.exe所在文件夹加入系统环境变量path中
 + python解释器运行即可
