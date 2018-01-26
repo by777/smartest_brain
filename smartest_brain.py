@@ -39,12 +39,8 @@ config = {
 
 
 def get_screenshot():
-    """获取手机截图"""
-
     process = subprocess.Popen("adb shell screencap -p", shell=True, stdout=subprocess.PIPE)
-    screenshot = process.stdout.read()
-
-    # print(screenshot)
+    screenshot = process.stdout.read()    
     # b"\x89PNG\r\r\r\n\x1a\r\r\n\x00\x00\x00\rIHDR\x00\x00\x048\x00\x00\x07\x80\x08\x06\x00\
     # 上面是一个PNG格式的图片，但需要将格式化（换行替换)
     screenshot = screenshot.replace(b'\r\r\n', b'\n')
