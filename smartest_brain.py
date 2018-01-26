@@ -4,21 +4,32 @@
 __author__ = 'bai xu'
 __date__ = '18/01/22'
 
+##############################################
+# 此beta版本作训练用
+# OCR识别部分使用Tesseract OCR
+# 计算答案部分使用文本相似度分析
+##############################################
+
 import subprocess
 import requests
 import random
 import os
 import sys
+import numpy as np
+import re
 
+from pyocr import pyocr
 from PIL import Image
-from aip import AipOcr
 from io import BytesIO
+from bs4 import BeautifulSoup
 
-# 全局变量只是为了Beta版本使用tesseract OCR时收集数据集用
-i = random.randint(1, 100)
+# 如果遇到Tesseract OCR报错，请尝试取消注释，并修改相应的路径
+# os.chdir('C:\ProgramData\Anaconda3\Lib\site-packages\pyocr')
+# os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.UTF8'
 DEBUG_SWITCH = False
-VERSION = '1.0.1'
 
+i = random.randint(1, 1000)
+VERSION = 'Beta-1.0.1'
 config = {
     '头脑王者': {
         'title': (80, 500, 1000, 880),
@@ -28,8 +39,6 @@ config = {
             (316, 1174, 723, 1292),
             (316, 1366, 723, 1469),
             (316, 1570, 723, 1657)
-
-
         ]
     },
     '西瓜视频': {
@@ -40,19 +49,11 @@ config = {
 
 def get_screenshot():
     process = subprocess.Popen("adb shell screencap -p", shell=True, stdout=subprocess.PIPE)
-    screenshot = process.stdout.read()    
-    # b"\x89PNG\r\r\r\n\x1a\r\r\n\x00\x00\x00\rIHDR\x00\x00\x048\x00\x00\x07\x80\x08\x06\x00\
-    # 上面是一个PNG格式的图片，但需要将格式化（换行替换)
+    screenshot = process.stdout.read()
     screenshot = screenshot.replace(b'\r\r\n', b'\n')
-    ######################################################
-    # 测试用，实际直接环境直接在内存内操作，减少读写IO
     if DEBUG_SWITCH:
-        global i
-        i = i + 1
-        with open('question'+str(i) + '.png', 'wb') as f:
+        with open('question'+str(i)+'.png', 'wb') as f:
             f.write(screenshot)
-    ######################################################
-    # img_fb副本文件句柄
     img_fb = BytesIO()
     img_fb.write(screenshot)
     img = Image.open(img_fb)
@@ -63,25 +64,40 @@ def get_screenshot():
     new_img.paste(answers_img, (0, 380, 920, 1140))
     new_img_fb = BytesIO()
     new_img.save(new_img_fb, 'png')
-    ######################################################
-    # 测试用
-    if DEBUG_SWITCH:
-        with open('test.png', 'wb') as f:
-            f.write(new_img_fb.getvalue())
-    ######################################################
     return new_img_fb
 
 
+def get_pic_crop(img):
+    img_fb = BytesIO()
+    img_fb.write(img.getvalue())
+    img = Image.open(img_fb)
+    title_img = img.crop((80, 500, 1000, 880))
+    answers_img_1 = img.crop((240, 970, 840, 1110))
+    # answers_img_1 = answers_img_1.convert('1')
+    answers_img_2 = img.crop((240, 1160, 840, 1310))
+    answers_img_3 = img.crop((240, 1350, 840, 1500))
+    answers_img_4 = img.crop((240, 1540, 840, 1690))
+    answers_imgs = {'title_img': title_img,
+                    'answers_img_1': answers_img_1,
+                    'answers_img_2': answers_img_2,
+                    'answers_img_3': answers_img_3,
+                    'answers_img_4': answers_img_4}
+    return answers_imgs
+
+
 def get_word_by_image(img):
-    app_id = '10731656'
-    api_key = 'ZeGHQUlwVvMY9fFl81P12WD9'
-    secret_key = 'Oy3FdgBajMlBf1utUcUMT7I6PyfKLRji'
-    client = AipOcr(app_id, api_key, secret_key)
-    res = client.basicGeneral(img)
-    return res
+    """从本地OCR获取文字（DEBUG_SWITCH = True时收集训练样本）"""
+    tools = pyocr.get_available_tools()[:]
+    if len(tools) == 0:
+        print("No OCR tool found")
+        sys.exit(1)
+    # print("Using '%s'" % (tools[0].get_name()))
+    print(tools[0].image_to_string(img, lang='chi_sim'))
+    return tools[0].image_to_string(img, lang='chi_sim')
 
 
-def baidu(question, answers):    
+def baidu(keyword):
+    """搜索内容相关度"""
     url = 'https://www.baidu.com/s'
     headers = {
         'User-Agent': 'Mozilla/5.0 \
@@ -90,16 +106,19 @@ def baidu(question, answers):
         Chrome/63.0.3239.132 Safari/537.36'
     }
     data = {
-        'wd': question
+        'wd': keyword
     }
     res = requests.get(url, params=data, headers=headers)
+    if res.status_code != '200':
+        print("检查网络状况")
+        sys.exit(0)
     res.encoding = 'utf-8'
-    html = res.text    
-    for t in range(len(answers)):
-        # 出现次数、answers、序号
-        answers[t] = (html.count(answers[t]), answers[t], t)
-    answers.sort(reverse=True)
-    return answers
+    bs = BeautifulSoup(res.text, 'lxml')
+    exp1 = bs.find('div', attrs={'class': 'nums'})
+    text = exp1.get_text()
+    num = re.sub(r'\D', "", text)
+    print(keyword+"相关结果约", num)
+    return int(num)
 
 
 def click(point):
@@ -111,8 +130,26 @@ def click(point):
     os.system(cmd)
 
 
-def run():
+def get_answer(question, answers):
+    question_num = baidu(question)
+    answer_num = []
+    question_answers_num = []
+    for answer in answers:
+        answer_num.append(baidu(answer))
+        question_answers_num.append(baidu((question + " " + answer)))
+    answer_num = np.array(answer_num, dtype='int64')
+    question_answers_num = np.array(question_answers_num, dtype='int64')
+    question_num = np.array(question_num, dtype='int64')
+    correlation = question_answers_num / (question_num * answer_num)
+    correlation = correlation.tolist()
+    print("题目是{0}")
+    correlation_index = correlation.index((max(correlation)))
+    return correlation_index
 
+
+def run():
+    answers = []
+    question = ""
     print("头脑王者答题助手" + VERSION)
     device_str = os.popen('adb shell getprop ro.product.device').read()
     if not device_str:
@@ -136,17 +173,18 @@ def run():
             print('手机连接已中断，即将退出')
             sys.exit(0)
         img = get_screenshot()
-        info = get_word_by_image(img.getvalue())
-        if info['words_result_num'] < 5:
-            print("本次关键信息识别失败")
+        question_answers_imgs = get_pic_crop(img)
+        for key in question_answers_imgs:
+            if key == 'title_img':
+                question = get_word_by_image(question_answers_imgs[key])
+            else:
+                answer = get_word_by_image(question_answers_imgs[key])
+                answers.append(answer)
+        if len(answers) < 4:
+            print("本次识别失败，请继续训练Tesseracr OCR")
             continue
-        question = ''.join([x['words'] for x in info['words_result'][:-4]])
-        answers = [x['words'] for x in info['words_result'][-4:]]
-        print("Q: " + question)
-        res = baidu(question, answers)
-        print("A: " + res[0][1])
-        click(config['头脑王者']['point'][res[0][2]])
-        print("------------------------")
+        where = get_answer(question, answers)
+        click(config['头脑王者']['point'][where])
 
 
 if __name__ == '__main__':
