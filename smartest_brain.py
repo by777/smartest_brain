@@ -1,4 +1,4 @@
-﻿# !/usr/bin/env python
+# !/usr/bin/env python
 # _*_ coding:utf-8 _*_
 
 __author__ = 'bai xu'
@@ -129,11 +129,11 @@ def run():
     print("头脑王者答题助手" + VERSION)
     device_str = os.popen('adb shell getprop ro.product.device').read()
     if not device_str:
-        print('请安装 ADB 及驱动并配置环境变量')
+        print('请检查ADB文件及手机USB调试模式')
         sys.exit(0)
     print(device_str.replace("\n", "") + "设备已就绪")
     while True:
-        instruction = input("在题目完整显示后回车，退出输入q")
+        instruction = input("在题目完整显示后回车，退出输入q\n")
         if instruction == "\0":
             continue
         elif instruction == "v":
@@ -146,7 +146,7 @@ def run():
             sys.exit(0)
         device_str_ = os.popen('adb shell getprop ro.product.device').read()
         if not device_str_:
-            print('请检查手机是否已连接电脑')
+            print('手机连接已中断，即将退出')
             sys.exit(0)
         img = get_screenshot()
         info = get_word_by_image(img.getvalue())
