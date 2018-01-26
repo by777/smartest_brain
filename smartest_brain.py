@@ -9,15 +9,12 @@ import requests
 import random
 import os
 import sys
-# import re
 
 from PIL import Image
 from aip import AipOcr
 from io import BytesIO
-# from bs4 import BeautifulSoup
-# from pyocr import pyocr
 
-# 全局变量只是为了使用tesseract OCR时收集数据集用
+# 全局变量只是为了Beta版本使用tesseract OCR时收集数据集用
 i = random.randint(1, 100)
 DEBUG_SWITCH = False
 VERSION = '1.0.1'
@@ -92,8 +89,7 @@ def get_word_by_image(img):
     return res
 
 
-def baidu(question, answers):
-    """搜索并且算出最有可能的答案"""
+def baidu(question, answers):    
     url = 'https://www.baidu.com/s'
     headers = {
         'User-Agent': 'Mozilla/5.0 \
@@ -106,8 +102,7 @@ def baidu(question, answers):
     }
     res = requests.get(url, params=data, headers=headers)
     res.encoding = 'utf-8'
-    html = res.text
-    # 分析最有可能答案
+    html = res.text    
     for t in range(len(answers)):
         # 出现次数、answers、序号
         answers[t] = (html.count(answers[t]), answers[t], t)
