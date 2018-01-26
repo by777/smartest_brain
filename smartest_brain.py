@@ -56,14 +56,11 @@ def get_screenshot():
     img_fb = BytesIO()
     img_fb.write(screenshot)
     img = Image.open(img_fb)
-    # 对图片关键信息裁剪
     title_img = img.crop((80, 500, 1000, 880))
     answers_img = img.crop((80, 960, 1000, 1720))
-    # 拼接图片画布
     new_img = Image.new('RGBA', (920, 1140))
     new_img.paste(title_img, (0, 0, 920, 380))
     new_img.paste(answers_img, (0, 380, 920, 1140))
-    # 内存对象
     new_img_fb = BytesIO()
     new_img.save(new_img_fb, 'png')
     ######################################################
@@ -76,7 +73,6 @@ def get_screenshot():
 
 
 def get_word_by_image(img):
-    """从百度OCR获取文字"""
     app_id = '10731656'
     api_key = 'ZeGHQUlwVvMY9fFl81P12WD9'
     secret_key = 'Oy3FdgBajMlBf1utUcUMT7I6PyfKLRji'
