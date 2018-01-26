@@ -63,12 +63,6 @@ def get_screenshot():
     new_img.paste(answers_img, (0, 380, 920, 1140))
     new_img_fb = BytesIO()
     new_img.save(new_img_fb, 'png')
-    ######################################################
-    # 测试用
-    if DEBUG_SWITCH:
-        with open('test.png', 'wb') as f:
-            f.write(new_img_fb.getvalue())
-    ######################################################
     return new_img_fb
 
 
